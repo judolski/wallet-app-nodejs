@@ -6,7 +6,6 @@ const WalletTransaction = require("../model/wallet_trans");
 const {transfer, walletTxn} = require("../controller/wallet_operations");
 const User = require("../model/user");
 
-
 const walletRouter = express.Router();
 
 walletRouter.route("/balance")

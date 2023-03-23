@@ -85,12 +85,15 @@ userRouter.route('/login')
 });
 
 
-userRouter.route('/users')
-.get((req, res) => {
-    User.find({})
-    .then((users) => {
-        console.log(users)
-    })
+userRouter.route('/user_details')
+.get(async(req, res) => {
+    const checkUser =  User.find({});
+    const db_operation = await walletTxn.databaseFunction(checkUser);
+    if(db_operation.status !== true) {
+        return res.status(db_operation.statusCode).json({status: true});
+    }
+    return res.status(db_operation.statusCode).json({db_operation});
+
 })
 
 

@@ -21,9 +21,9 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true}));
 app.use(morgan('tiny'));
 
-app.use('/user', userRouter);
-app.use('/wallet', walletRouter);
-app.use('/transaction', transactionRouter);
+app.use('/user-section', userRouter);
+app.use('/wallet-section', walletRouter);
+app.use('/transaction-section', transactionRouter);
 
 server.listen(port,() => {
     console.log(`server running on http://localhost:${port}`)
