@@ -10,14 +10,7 @@ const walletRouter = express.Router();
 
 walletRouter.route("/balance")
 .get(async(req, res) => {
-    try {
-        const user_wallet = await Wallet.findOne({userId: req.body.userId});
-        if(!user_wallet) {
-            return res.status(500).json({status: false, message: `Unable to retrieve balance`});
-        }
-        return res.status(200).json({status: true, balance: user_wallet});
-    }
-    catch(err) {res.status(500).json({status: false, message: `Unable to retrieve balance. \n ${err}`});}
+    return walletTxn.balance(req, res);
 });
 
 
@@ -70,7 +63,7 @@ walletRouter.route("/transfer")
         console.log('trnsaction completed');
         session.endSession();
         console.log('Session ended');
-        return res.status(200).json({status: true, message: "Transfer successfull"});
+        return res.status(200).json({status: true, message: "Transfer successful"});
     }
     catch(err) {
         console.log(err);
@@ -87,7 +80,7 @@ walletRouter.route("/transfer")
 
 const refund = (userId, senderBalace, res) => {
     Wallet.findOneAndUpdate({userId: userId}, 
-        {$set: {balance: senderBalace}
+        {$inc: {balance: senderBalace}
     })
     .then((refund) => {
         res.status(500).json({message: "Unable to complete"});

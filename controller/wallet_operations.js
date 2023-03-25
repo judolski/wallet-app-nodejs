@@ -1,3 +1,4 @@
+const auth = require("../controller/authenticate");
 const WalletTransaction = require("../model/wallet_trans");
 const Wallet = require("../model/wallet");
 const User = require("../model/user");
@@ -57,7 +58,7 @@ const transfer = {
             return {
                 status: false,
                 statusCode: 403,
-                message: `Insufficient fund, remaining balance is ${validateSender.balance}`
+                message: `Insufficient fund, current balance is ${validateSender.balance}`
             };
         }
         const response = await Wallet.findOneAndUpdate({phone: wallet_number}, {$inc: {balance: -amount}}, {session});
@@ -78,9 +79,8 @@ const transfer = {
     } 
 }
 
-
 const walletTxn = {
-    async databaseFunction(db_operation, message) {
+    databaseFunction: async(db_operation, message) => {
         try{
             const response = await db_operation;
             if(!response || response.deletedCount < 1 || response.length < 1) {
@@ -93,8 +93,8 @@ const walletTxn = {
             return {status: false, statusCode:500, message: `Internal server error occur, retry later. ${err}`};
         }
     },
-    
-    createTranctionHistory({amount, wallet_number, transactionId, beneficiary, transaction_type, narration, status, previousbalance, currentbalance, session}) {
+    //create transaction history
+    createTranctionHistory: ({amount, wallet_number, transactionId, beneficiary, transaction_type, narration, status, previousbalance, currentbalance, session}) => {
         return WalletTransaction.create([{
             amount,
             wallet_number,
@@ -106,6 +106,17 @@ const walletTxn = {
             previousbalance,
             currentbalance,
         }], {session});
+    },
+
+    balance: async(req, res) => {
+        try {
+            const user_wallet = await Wallet.findOne({userId: req.body.userId});
+            if(!user_wallet) {
+                return res.status(500).json({status: false, message: `Unable to retrieve balance`});
+            }
+            return res.status(200).json({status: true, balance: user_wallet});
+        }
+        catch(err) {res.status(500).json({status: false, message: `Unable to retrieve balance. \n ${err}`});}
     }
 
 }
