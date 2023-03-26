@@ -1,3 +1,4 @@
+const axios = require("axios")
 const auth = require("../controller/authenticate");
 const WalletTransaction = require("../model/wallet_trans");
 const Wallet = require("../model/wallet");
@@ -84,7 +85,7 @@ const walletTxn = {
         try{
             const response = await db_operation;
             if(!response || response.deletedCount < 1 || response.length < 1) {
-                return {status: false, statusCode: 404, message: message || "No record available"};
+                return {status: false, statusCode: 404, response, message: message || "No record available"};
             }
             return {status: true, statusCode:200, response};  
         }
@@ -118,7 +119,52 @@ const walletTxn = {
         }
         catch(err) {res.status(500).json({status: false, message: `Unable to retrieve balance. \n ${err}`});}
     }
-
 }
 
-module.exports = {transfer, walletTxn};
+const fundWallet = {
+    via_flutterwave: async(req, res) => {
+        const {transaction_id} = req.query;
+        //create url with transaction ID to verify transaction status
+        const url = `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`;
+
+        //network call to confirm transaction
+        const response = await axios({
+            url,
+            method: "get",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                Authorization: `${process.env.FLUTTERWAVE_V3_SECRET_KEY}`
+            }
+        });
+
+        try {
+            const {id, status, amount, narration, customer, card} = response.data.data;
+            const db_operation1 = WalletTransaction.findOne({transactionId: id});
+            const checkTranExist = await walletTxn.databaseFunction(db_operation1);    
+            if(checkTranExist.status === true) {
+                return res.status(409).json({status:false, message:"Transaction already exist"});
+            }
+            console.log(customer)
+            const db_operation2 = Wallet.findOneAndUpdate({email: customer.email}, {$inc: {balance: +amount}});
+            const creditWallet = await walletTxn.databaseFunction(db_operation2);
+            console.log(creditWallet)
+            const walletBalance = creditWallet.response.balance;
+            if(creditWallet.status !== true) {
+                console.log("transaction failed");
+                await walletTxn.createTranctionHistory({amount, wallet_number: customer.phone_number, transactionId:id, transaction_type: "fund wallet via flutterwave", narration:`${narration}/${card.first_6digits}****${card.last_4digits}`, status:"failed", previousbalance: walletBalance, currentbalance: walletBalance});
+                return res.status(409).json({status:false, message:"Transaction failed"});
+            }
+            console.log("wallet successfully funded");
+            await walletTxn.createTranctionHistory({amount, wallet_number: customer.phone_number, transactionId:id, transaction_type: "fund wallet via flutterwave", narration:`${narration}/${card.first_6digits}****${card.last_4digits}`, status: status, previousbalance: walletBalance, currentbalance: walletBalance + amount});
+            return res.status(200).json({status:true, message:"Wallet funded successfully"});
+        }
+        catch(err) {
+            console.log(err);
+            return res.status(200).json({status: false, statusCode:500, message: `Transaction failed. ${err}`});    
+        }
+    }
+}
+
+
+module.exports = {transfer, walletTxn, fundWallet};

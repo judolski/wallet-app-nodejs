@@ -4,7 +4,7 @@ const { v4 } = require("uuid");
 const Wallet = require("../model/wallet");
 const WalletTransaction = require("../model/wallet_trans");
 const {transfer, walletTxn} = require("../controller/wallet_operations");
-const User = require("../model/user");
+const auth = require("../controller/authenticate")
 
 const walletRouter = express.Router();
 
@@ -15,25 +15,25 @@ walletRouter.route("/balance")
 
 
 walletRouter.route("/trans_history")
-.get(async(req, res) => {
+.get(auth.isAuthenticated, async(req, res) => {
     const db_operation = WalletTransaction.find({});
     const response = await walletTxn.databaseFunction(db_operation, "No transaction history available");
     return res.status(response.statusCode).json({response});
 })
-.delete(async(req, res) => {
+.delete(auth.isAuthenticated, async(req, res) => {
     const db_operation = WalletTransaction.deleteMany({});
     const response = await walletTxn.databaseFunction(db_operation);
     return res.status(response.statusCode).json({response});
 })
 
 walletRouter.route("/trans_history/user")
-.get(async(req, res) => {
+.get(auth.isAuthenticated, async(req, res) => {
     const {key ,value} = req.body;
     const db_operation = WalletTransaction.find({[key]: value});
     const response = await walletTxn.databaseFunction(db_operation, "No transaction history available");
     return res.status(response.statusCode).json({response});
 })
-.delete(async(req, res) => {
+.delete(auth.isAuthenticated, async(req, res) => {
     const {key,value} = req.body;
     const db_operation = WalletTransaction.deleteMany({[key]: value});
     const response = await walletTxn.databaseFunction(db_operation);
@@ -41,7 +41,7 @@ walletRouter.route("/trans_history/user")
 })
 
 walletRouter.route("/transfer")
-.post(async(req, res) => {
+.post(auth.isAuthenticated, async(req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction()
     try{
@@ -72,22 +72,7 @@ walletRouter.route("/transfer")
         session.endSession();
         return;
     }
-})
-        
-
-
-
-
-const refund = (userId, senderBalace, res) => {
-    Wallet.findOneAndUpdate({userId: userId}, 
-        {$inc: {balance: senderBalace}
-    })
-    .then((refund) => {
-        res.status(500).json({message: "Unable to complete"});
-        return;
-    })
-}
-
+});
 
 
 module.exports = walletRouter;

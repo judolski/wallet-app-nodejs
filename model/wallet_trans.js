@@ -13,4 +13,4 @@ const walletTransactionSchema = new Schema({
     currentbalance: {type: Number}
 }, {timestamps: true})
 
-module.exports = mongoose.model("walletTransaction", walletTransactionSchema)
+module.exports = mongoose.model('WalletTransaction', walletTransactionSchema)

@@ -1,30 +1,35 @@
 const jwt = require("jsonwebtoken");
 const bycryp = require("bcryptjs");
-
+const fs = require("fs");
 const Wallet = require("../model/wallet");
 const User = require("../model/user");
+const WalletTransaction = require("../model/wallet_trans");
+
 const {walletTxn} = require("../controller/wallet_operations")
 
-const {TOKEN_KEY} = process.env;
+const PRIVATE_KEY = fs.readFileSync('./rsa_key/private.key', 'utf8');
+const PUBLIC_KEY = fs.readFileSync('./rsa_key/public.key', 'utf8');
 
-function generateToken(user) { 
-    const jwtExp = 720;
-    return token = jwt.sign({user}, TOKEN_KEY, {
-    expiresIn: jwtExp
+
+function generateToken(user) {
+    return token = jwt.sign({user}, PRIVATE_KEY, {
+        algorithm: "RS256",
+        expiresIn: "12h",
+
     });
 }
 
-isAuthenticated = (req, res, next) => {
-    let token = req.headers.authorization;
+const isAuthenticated = (req, res, next) => {
+    const token = req.headers.authorization.split(" ")[1];
     if(!token) {
-        return res.status(403).send({message: "Unauthorized, no access token ptovided!"});
+        return res.status(403).send({message: "Unauthorized, no access token provided!"});
     }
-    jwt.verify(token, TOKEN_KEY, (err, decoded) => {
+    return jwt.verify(token, PUBLIC_KEY, {}, (err, user) => {
         if(err) {
             console.log(err)
-            return res.status(403).send({message: "User session expired!. Login in again"});
+            return res.status(498).send({message: "invalid or expired token!. Login in again"});
         }
-        next();
+        return next();
     });    
 }
 
@@ -82,7 +87,7 @@ const login = async(req, res) => {
         const checkUser = User.findOne({$or:[{phone:user},{email:user}]});
         const db_operation = await walletTxn.databaseFunction(checkUser);
         if(db_operation.status !== true) {
-            return res.status(401).json({status: true, message: "Invalid user"});
+            return res.status(401).json({status: false, message: "Invalid user"});
         }
         const checkPassword = await bycryp.compare(password, db_operation.response.password);
         if(!checkPassword) {
@@ -108,12 +113,19 @@ const login = async(req, res) => {
                 session.endSession();
                 return res.status(400).json({status: false, message: "Unable to delete accout"});
             }
-            const deleteWallet =  Wallet.deleteOne({userId: req.body.id}, {session});
+            const deleteWallet =  Wallet.findOneAndDelete({userId: req.body.id}, {session});
             const db_operation2 = await walletTxn.databaseFunction(deleteWallet);
             if(db_operation2.status !== true) {
                 await session.abortTransaction();
                 session.endSession();
                 return res.status(400).json({status: false, message: "Unable to delete accout"});
+            }
+            const deleteTransHis = WalletTransaction.deleteMany({wallet_number:db_operation2.response.phone}, {session});
+            const db_operation3 = await walletTxn.databaseFunction(deleteTransHis);
+            if(db_operation3.status !== true && db_operation3.response.acknowledged !== true) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({status: false, message: "Unable to perform the operation"});
             }
             await session.commitTransaction();
             session.endSession();

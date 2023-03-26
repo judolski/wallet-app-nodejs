@@ -18,13 +18,13 @@
         FlutterwaveCheckout({
           public_key: TOKEN_KEY,
           tx_ref: "hooli-tx-1920bbtyt",
-          amount: 1000.90,
+          amount: 1000,
           currency: "NGN",
           country: "NG",
           payment_options: "card, banktransfer",
 
           // specified redirect URL
-          redirect_url: "http://localhost:3000/transaction/response",
+          redirect_url: "http://localhost:3000/transaction-section/response",
 
           // use customer details if user is not logged in, else add user_id to the request
           customer: {

@@ -1,3 +1,4 @@
 node_modules
 .env
 .gitignore
+rsa_key

@@ -20,9 +20,8 @@ userRouter.route('/login')
     return auth.login(req, res);
 });
 
-
 userRouter.route('/all_users')
-.get(async(req, res) => {
+.get(auth.isAuthenticated, async(req, res) => {
     const fetchUsers =  User.find({});
     const db_operation = await walletTxn.databaseFunction(fetchUsers);
     if(db_operation.status !== true) {
@@ -33,7 +32,7 @@ userRouter.route('/all_users')
 })
 
 userRouter.route('/single_user')
-.get(async(req, res) => {
+.get(auth.isAuthenticated, async(req, res) => {
     const fetchUser =  User.findOne({_id: req.body.id});
     const db_operation = await walletTxn.databaseFunction(fetchUser);
     if(db_operation.status !== true) {
@@ -43,7 +42,7 @@ userRouter.route('/single_user')
 
 })
 //delete account
-.delete(async(req, res) => {
+.delete(auth.isAuthenticated, async(req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     return auth.closeAccount(req, res, session);
